@@ -44,6 +44,16 @@ class restore extends command {
             $error = true;
         }
 
+        global $DB;
+        // Check if category is OK.
+        if (isset($options['cat'])) {
+            $category = $DB->get_record('course_categories', array('id' => $options['cat']), '*', MUST_EXIST);
+            if (!isset($category->id)) {
+                logger::shout('La categorie ' . $options['cat'] . ' nexiste pas.');
+                $error = true;
+            }
+        }
+
         if ($error) return;
 
         // $permissions = fileperms($options['path']);
@@ -64,26 +74,15 @@ class restore extends command {
         if (empty($CFG->tempdir)) {
             $CFG->tempdir = $CFG->dataroot . DIRECTORY_SEPARATOR . 'temp';
         }
-        $error = false;
-        // Check if category is OK.
-        if ($categoryId) {
-            $category = $DB->get_record('course_categories', array('id' => $categoryId), '*', MUST_EXIST);
-            if (!isset($category->id)) {
-                logger::shout('La categorie ' . $categoryId . ' nexiste pas.');
-                return;
-            }
 
-        }
+        //unzip into $CFG->tempdir / "backup" / "auto_restore_" . $split[1];
+        $backupdir = "moosh_restore_" . uniqid();
+        $path = $CFG->tempdir . DIRECTORY_SEPARATOR . "backup" . DIRECTORY_SEPARATOR . $backupdir;
 
-        if (!$error) {
-            //unzip into $CFG->tempdir / "backup" / "auto_restore_" . $split[1];
-            $backupdir = "moosh_restore_" . uniqid();
-            $path = $CFG->tempdir . DIRECTORY_SEPARATOR . "backup" . DIRECTORY_SEPARATOR . $backupdir;
+        /** @var $fp file_packer */
+        $fp = get_file_packer('application/vnd.moodle.backup');
+        $fp->extract_to_pathname($bkpfile, $path);
 
-            /** @var $fp file_packer */
-            $fp = get_file_packer('application/vnd.moodle.backup');
-            $fp->extract_to_pathname($bkpfile, $path);
-        }
 
         //extract original full & short names
         $xmlfile = $path . DIRECTORY_SEPARATOR . "course" . DIRECTORY_SEPARATOR . "course.xml";
@@ -119,6 +118,7 @@ class restore extends command {
         }
         $plan = $rc->get_plan();
 
+        //TODO: valider les options réquises.
         $restopt = array(
             'activities' => 1,
             'blocks' => 1,
@@ -126,19 +126,33 @@ class restore extends command {
             'users' => 0,
             'role_assignments' => 1,
             'comments' => 0,
-            'logs' => 0);
+            'logs' => 0
+        );
 
         foreach ($restopt as $name => $value) {
             $setting = $plan()->get_setting($name);
-            if ($setting->get_status() == backup_setting::NOT_LOCKED) {
+            if ($setting->get_status() == \backup_setting::NOT_LOCKED) {
                 $setting->set_value($value);
             }
         }
-        
+
         $rc->execute_precheck();
         $rc->execute_plan();
         $rc->destroy();
         echo "New course ID for '$shortname': $courseid in {$categoryId}\n";
+        // Ajouter le idnumber dans le nouveau cours.
+        $c = $DB->get_record('course',array('id'=> $courseid));
+        $c->idnumber = self::get_idnumber($shortname);
+        $DB->update_record('course', $c);
+    }
+
+    /**
+     * @param $shortname format attendu XXX-XXX-XX-XX-XX
+     * @return string XXXXXXXX-XX-XX
+     */
+    private static function get_idnumber($shortname) {
+        $comps = explode('-', $shortname);
+         return $comps[0].$comps[1].$comps[2].'-'.$comps[3].'-'.$comps[4];
     }
 
 }
