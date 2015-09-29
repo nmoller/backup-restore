@@ -9,9 +9,9 @@
  * 
  */
 
-require __DIR__.'/../src/cad/backup.php';
+require __DIR__.'/../src/cad/restore.php';
 
 // pour avoir le résultat:
-// en ligne de commande php backup.php --path /home/nmoller --sn 383-204-FD-60-03
+// en ligne de commande php backup.php --file /home/nmoller/backup_383-204-FD-60-03_2015.09.29.mbz --cat 4
 
-\cad\backup::run();
+\cad\restore::run();
