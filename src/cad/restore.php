@@ -27,7 +27,7 @@ class restore extends command {
         $error = false;
         if (!isset($options['file']) ) {
             logger::shout('loption --file doit etre indiquee');
-            $error = true;
+            return;
         }
 
         if (!file_exists($options['file'])) {
@@ -39,7 +39,7 @@ class restore extends command {
             $error = true;
         }
 
-        if (!isset($options['cat']) || !is_int($options['cat'])) {
+        if (!isset($options['cat'])) {
             logger::shout('indiquer la categorie --cat ');
             $error = true;
         }
@@ -48,7 +48,7 @@ class restore extends command {
 
         // $permissions = fileperms($options['path']);
         // logger::shout($options['path'] . ' permissions:' . $permissions. PHP_EOL);
-        backup::execute($options['file'], $options['cat']);
+        restore::execute($options['file'], $options['cat']);
     }
 
     /**
@@ -68,11 +68,12 @@ class restore extends command {
         // Check if category is OK.
         if ($categoryId) {
             $category = $DB->get_record('course_categories', array('id' => $categoryId), '*', MUST_EXIST);
-            $error = true;
+            if (!isset($category->id)) {
+                logger::shout('La categorie ' . $categoryId . ' nexiste pas.');
+                return;
+            }
+
         }
-
-
-
 
         if (!$error) {
             //unzip into $CFG->tempdir / "backup" / "auto_restore_" . $split[1];
@@ -108,24 +109,36 @@ class restore extends command {
             $fullname = $shortname;
         }
 
-        $courseid = restore_dbops::create_new_course($fullname, $shortname, $category->id);
-        $rc = new restore_controller($backupdir, $courseid, backup::INTERACTIVE_NO,
-            backup::MODE_GENERAL, $USER->id, backup::TARGET_NEW_COURSE);
+        $courseid = \restore_dbops::create_new_course($fullname, $shortname, $categoryId);
+        $rc = new \restore_controller($backupdir, $courseid, \backup::INTERACTIVE_NO,
+            \backup::MODE_GENERAL, 2, \backup::TARGET_NEW_COURSE);
 
-        echo "Restoring (new course id,shortname,destination category): $courseid,$shortname," . $category->id . "\n";
-        if ($rc->get_status() == backup::STATUS_REQUIRE_CONV) {
+        echo "Restoring (new course id,shortname,destination category): $courseid, $shortname," . $categoryId . "\n";
+        if ($rc->get_status() == \backup::STATUS_REQUIRE_CONV) {
             $rc->convert();
         }
         $plan = $rc->get_plan();
-        $tasks = $plan->get_tasks();
-        foreach ($tasks as &$task) {
-            $setting = $task->get_setting('enrol_migratetomanual');
-            $setting->set_value('0');
+
+        $restopt = array(
+            'activities' => 1,
+            'blocks' => 1,
+            'filters' => 1,
+            'users' => 0,
+            'role_assignments' => 1,
+            'comments' => 0,
+            'logs' => 0);
+
+        foreach ($restopt as $name => $value) {
+            $setting = $plan()->get_setting($name);
+            if ($setting->get_status() == backup_setting::NOT_LOCKED) {
+                $setting->set_value($value);
+            }
         }
+        
         $rc->execute_precheck();
         $rc->execute_plan();
         $rc->destroy();
-        echo "New course ID for '$shortname': $courseid in {$category->id}\n";
+        echo "New course ID for '$shortname': $courseid in {$categoryId}\n";
     }
 
 }

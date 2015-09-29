@@ -12,6 +12,6 @@
 require __DIR__.'/../src/cad/restore.php';
 
 // pour avoir le résultat:
-// en ligne de commande php backup.php --file /home/nmoller/backup_383-204-FD-60-03_2015.09.29.mbz --cat 4
+// en ligne de commande php restore.php --file /home/nmoller/backup_383-204-FD-60-03_2015.09.29.mbz --cat 4
 
 \cad\restore::run();
