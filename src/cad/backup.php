@@ -76,7 +76,7 @@ class backup extends command {
                 $setting = $task->get_setting('role_assignments');
                 $setting->set_value('1');
                 $setting = $task->get_setting('filters');
-                $setting->set_value('0');
+                $setting->set_value('1');
                 $setting = $task->get_setting('comments');
                 $setting->set_value('0');
                 $setting = $task->get_setting('logs');

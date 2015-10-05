@@ -126,11 +126,12 @@ class restore extends command {
             'users' => 0,
             'role_assignments' => 1,
             'comments' => 0,
-            'logs' => 0
+            'logs' => 0,
+            'grade_histories' => 0
         );
 
         foreach ($restopt as $name => $value) {
-            $setting = $plan()->get_setting($name);
+            $setting = $plan->get_setting($name);
             if ($setting->get_status() == \backup_setting::NOT_LOCKED) {
                 $setting->set_value($value);
             }
