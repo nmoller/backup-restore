@@ -13,7 +13,7 @@ namespace cad;
 
 
 class command {
-    const MOODLE_ROOT = "/var/www/html/moodle/";
+    const MOODLE_ROOT = "/var/www/ena/moodle/";
 
     /**
      * @param $opt array
